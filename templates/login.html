@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#102a56">
+<meta name="robots" content="noindex">
+<title>Sign in · Fincart</title>
+<link rel="icon" href="{{ url_for('static', filename='fincart-logo.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='blue-20261026') }}">
+</head>
+<body class="login-page">
+<main id="main" class="login-card">
+  <img class="login-logo" src="{{ url_for('static', filename='fincart-logo.png') }}" width="72" height="72" alt="">
+  <div class="loading-brand">FINCART</div>
+  <p class="loading-title">Insurance Renewal Tracker</p>
+  <p class="login-lede">Sign in to view and manage renewals.</p>
+  {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+  {% if not configured %}<div class="notice warn" role="status">Sign-in isn’t set up on this server yet. Set <strong>APP_USERNAME</strong> and <strong>APP_PASSWORD</strong> in the server’s environment settings.</div>{% endif %}
+  <form method="post" action="{{ url_for('login') }}" class="login-form">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="field">
+      <label for="username">ID</label>
+      <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="login-submit">Sign in</button>
+  </form>
+  <span class="login-footer">Insurance operations, made clear.</span>
+</main>
+</body>
+</html>

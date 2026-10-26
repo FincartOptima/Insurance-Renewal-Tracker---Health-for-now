@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#102a56">
 <title>{% block title %}Renewal Tracker{% endblock %} · Fincart</title>
 <link rel="icon" href="{{ url_for('static', filename='fincart-logo.png') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='blue-20261006') }}">
-<script src="{{ url_for('static', filename='workspace.js', v='blue-20261006') }}" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='blue-20261026') }}">
+<script src="{{ url_for('static', filename='workspace.js', v='blue-20261026') }}" defer></script>
 </head>
 <body data-page="{{ request.endpoint }}" data-await-data="{{ 'true' if request.endpoint in ['tracker', 'overview'] and total else 'false' }}">
 <div id="loading-screen" class="loading-screen" hidden aria-label="Loading Fincart workspace" role="status" aria-live="polite">
@@ -35,7 +35,7 @@
   <div class="sidebar-footer"><span class="workspace-avatar">F</span><span>Fincart workspace<small>Policy management</small></span></div>
 </aside>
 <div class="workspace">
-  <header class="workspace-bar"><div><span>Insurance operations</span><span class="breadcrumb-divider">/</span><strong>{{ {'overview':'Overview', 'tracker':'Renewals', 'upload':'Import data'}.get(request.endpoint, 'Workspace') }}</strong></div><span id="workspace-date" class="workspace-date">India Standard Time</span></header>
+  <header class="workspace-bar"><div><span>Insurance operations</span><span class="breadcrumb-divider">/</span><strong>{{ {'overview':'Overview', 'tracker':'Renewals', 'upload':'Import data'}.get(request.endpoint, 'Workspace') }}</strong></div><div class="workspace-actions"><span id="workspace-date" class="workspace-date">India Standard Time</span><form method="post" action="{{ url_for('logout') }}"><button type="submit" class="signout">Sign out</button></form></div></header>
   <main id="main" tabindex="-1">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}<div class="notice {{ category }}" role="status">{{ message }}</div>{% endfor %}

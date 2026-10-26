@@ -7,11 +7,11 @@ A Flask + PostgreSQL workspace for insurance renewals. Import the monthly insura
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# Set DATABASE_URL and SECRET_KEY in .env.
+# Set DATABASE_URL, SECRET_KEY, APP_USERNAME and APP_PASSWORD in .env.
 python app.py
 ```
 
-Open http://127.0.0.1:5003. Existing Render configuration works without a framework migration or additional production dependencies. See [DEPLOY.md](DEPLOY.md).
+Open http://127.0.0.1:5003 and sign in with the `APP_USERNAME` / `APP_PASSWORD` from `.env`. Every page and API route requires sign-in; if either value is unset, nobody can sign in. Render needs the same two settings in its Environment tab; no framework migration or additional production dependencies are required. See [DEPLOY.md](DEPLOY.md).
 
 ## Renewal workspace
 

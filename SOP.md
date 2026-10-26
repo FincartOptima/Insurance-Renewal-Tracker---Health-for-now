@@ -182,9 +182,13 @@ completely separate, as explained in Section 3.
 
 ## 6. Limitations — things to know
 
-- **No login.** Anyone with the webpage link can view and edit every
-  policy — there's no password or user accounts. Don't share the link
-  outside the people who should have access.
+- **One shared login.** The webpage asks for an ID and password before
+  showing anything. It is a single shared login, not individual user
+  accounts, so everyone who signs in can view and edit every policy. The ID
+  and password are the `APP_USERNAME` and `APP_PASSWORD` settings on Render
+  (Environment tab). To change the password, change that setting and save;
+  everyone is signed out and must use the new one. After 5 wrong attempts
+  the page locks out that visitor for 15 minutes.
 - **Free-tier sleep.** Both Render and Neon pause themselves after a few
   minutes of no activity, to stay free. The first person to open the page
   after a quiet spell will wait 10-30 seconds while everything wakes up.

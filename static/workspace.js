@@ -1,3 +1,16 @@
+/* If the sign-in expires mid-session, the API answers 401: send the user back to sign in. */
+(() => {
+  if (typeof window.fetch !== 'function') return;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const response = await nativeFetch(...args);
+    if (response && response.status === 401) {
+      window.location.assign('/login?next=' + encodeURIComponent(window.location.pathname + window.location.search));
+    }
+    return response;
+  };
+})();
+
 /* The opening screen follows actual data readiness, with a bounded fallback. */
 (() => {
   const screen = document.getElementById('loading-screen');

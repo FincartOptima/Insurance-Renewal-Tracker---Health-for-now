@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import unittest
 from decimal import Decimal
 from io import BytesIO
@@ -11,6 +12,15 @@ import exports
 import queries
 
 TODAY = dt.date(2026, 9, 27)
+TEST_LOGIN = {'APP_USERNAME': 'tester', 'APP_PASSWORD': 'test-password'}
+
+
+def signed_in_client():
+    """A test client carrying a valid sign-in (needs TEST_LOGIN in the environment)."""
+    client = app.app.test_client()
+    with client.session_transaction() as sess:
+        sess['auth'] = app._auth_token()
+    return client
 
 
 def policy(number, days, **overrides):
@@ -42,6 +52,9 @@ class Connection:
 
 class RenewalTests(unittest.TestCase):
     def setUp(self):
+        login_env = patch.dict(os.environ, TEST_LOGIN)
+        login_env.start()
+        self.addCleanup(login_env.stop)
         self.rows = [policy(str(d), d) for d in [-1, 0, 1, 2, 7, 8, 14, 30, 60, 90, 91, None]]
         self.conn = Connection(self.rows)
     def data(self, **kwargs): return queries.build(self.conn, today=TODAY, **kwargs)
@@ -97,7 +110,7 @@ class RenewalTests(unittest.TestCase):
     def test_api_export_parity_and_more_than_one_page(self):
         self.conn.rows=[policy(f'000{i:03}',7) for i in range(60)]+[policy('excluded',30)]
         with patch.object(app.db,'connect',return_value=self.conn), patch.object(queries,'business_today',return_value=TODAY):
-            client=app.app.test_client()
+            client=signed_in_client()
             args='?bucket=next7&team=North&rm=Riya&type=Health&status=Not+Done&q=Sample'
             response=client.get('/api/renewals'+args)
             export=client.get('/api/renewals/export'+args)
@@ -115,7 +128,7 @@ class RenewalTests(unittest.TestCase):
         self.assertEqual(self.conn.commits,0)
     def test_atomic_save_and_slash_policy(self):
         with patch.object(app.db,'connect',return_value=self.conn):
-            response=app.app.test_client().patch('/api/renewals/HI%2F2026%2F001',json={'fields':{'phone':'0123','remarks':'Contacted','status':'Done'}})
+            response=signed_in_client().patch('/api/renewals/HI%2F2026%2F001',json={'fields':{'phone':'0123','remarks':'Contacted','status':'Done'}})
         self.assertEqual(response.status_code,200)
         self.assertEqual(self.conn.commits,1)
         self.assertTrue(all(params[-1]=='HI/2026/001' for _,params in self.conn.calls))
@@ -133,5 +146,93 @@ class RenewalTests(unittest.TestCase):
             self.assertIn('Import your first file',empty)
         with app.app.test_request_context('/upload'):
             self.assertIn('Import policy data',app.render_template('upload.html',total=0,last_upload=None,last_employee=None,result=None,employee_result=None))
+
+class LoginTests(unittest.TestCase):
+    def setUp(self):
+        login_env = patch.dict(os.environ, TEST_LOGIN)
+        login_env.start()
+        self.addCleanup(login_env.stop)
+        app._failed_logins.clear()
+        self.addCleanup(app._failed_logins.clear)
+        self.client = app.app.test_client()
+    def sign_in(self, username='tester', password='test-password', **extra):
+        return self.client.post('/login', data={'username': username, 'password': password, **extra})
+    def api_status(self):
+        with patch.object(app, '_filtered_renewals', return_value={}):
+            return self.client.get('/api/renewals').status_code
+    def test_pages_redirect_to_login_when_signed_out(self):
+        for path in ['/', '/tracker', '/upload']:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 302)
+                self.assertTrue(response.headers['Location'].startswith('/login'))
+        self.assertEqual(self.client.get('/tracker').headers['Location'], '/login?next=/tracker')
+        self.assertEqual(self.client.post('/reset').status_code, 302)
+        self.assertEqual(self.client.post('/upload').status_code, 302)
+    def test_api_answers_401_when_signed_out(self):
+        for method, path in [('get', '/api/overview'), ('get', '/api/renewals'),
+                             ('get', '/api/renewals/export'), ('patch', '/api/renewals/HI%2F1')]:
+            with self.subTest(path=path):
+                self.assertEqual(getattr(self.client, method)(path).status_code, 401)
+    def test_login_page_and_static_files_stay_public(self):
+        self.assertEqual(self.client.get('/login').status_code, 200)
+        with self.client.get('/static/style.css') as response:
+            self.assertEqual(response.status_code, 200)
+    def test_correct_credentials_sign_in_and_return_to_requested_page(self):
+        response = self.sign_in(next='/tracker')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/tracker')
+        self.assertEqual(self.api_status(), 200)
+        self.assertEqual(self.client.get('/login').status_code, 302)
+    def test_id_ignores_case_but_password_does_not(self):
+        self.assertEqual(self.sign_in(username='TESTER').status_code, 302)
+        other = app.app.test_client()
+        self.assertEqual(other.post('/login', data={'username': 'tester', 'password': 'TEST-PASSWORD'}).status_code, 401)
+    def test_wrong_credentials_are_rejected(self):
+        for username, password in [('tester', 'wrong'), ('wrong', 'test-password'), ('', '')]:
+            with self.subTest(username=username):
+                response = self.sign_in(username, password)
+                self.assertEqual(response.status_code, 401)
+                self.assertIn('Incorrect ID or password.', response.get_data(as_text=True))
+        self.assertEqual(self.api_status(), 401)
+    def test_unset_credentials_block_everyone(self):
+        with patch.dict(os.environ, {'APP_USERNAME': '', 'APP_PASSWORD': ''}):
+            response = self.sign_in('', '')
+            self.assertEqual(response.status_code, 401)
+            self.assertIn('set up on this server', response.get_data(as_text=True))
+            with self.client.session_transaction() as sess:
+                sess['auth'] = ''
+            self.assertEqual(self.api_status(), 401)
+    def test_next_only_follows_same_site_paths(self):
+        for target in ['https://evil.example/', '//evil.example', '/\\evil.example', 'javascript:alert(1)', '/login']:
+            with self.subTest(target=target):
+                response = self.sign_in(next=target)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.headers['Location'], '/')
+    def test_lockout_after_repeated_failures(self):
+        for _ in range(app.LOGIN_MAX_FAILURES):
+            self.assertEqual(self.sign_in(password='wrong').status_code, 401)
+        self.assertEqual(self.sign_in().status_code, 429)
+        self.assertEqual(self.api_status(), 401)
+    def test_logout_ends_the_session(self):
+        self.sign_in()
+        self.assertEqual(self.api_status(), 200)
+        response = self.client.post('/logout')
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].startswith('/login'))
+        self.assertEqual(self.api_status(), 401)
+        self.sign_in()
+        self.assertEqual(self.client.get('/logout').status_code, 405)
+    def test_changing_the_password_signs_everyone_out(self):
+        self.sign_in()
+        self.assertEqual(self.api_status(), 200)
+        with patch.dict(os.environ, {'APP_PASSWORD': 'a-new-password'}):
+            self.assertEqual(self.api_status(), 401)
+    def test_session_cookie_flags_and_no_store(self):
+        response = self.sign_in()
+        cookie = response.headers['Set-Cookie']
+        self.assertIn('HttpOnly', cookie)
+        self.assertIn('SameSite=Lax', cookie)
+        self.assertEqual(self.client.get('/login').headers['Cache-Control'], 'no-store')
 
 if __name__=='__main__': unittest.main()

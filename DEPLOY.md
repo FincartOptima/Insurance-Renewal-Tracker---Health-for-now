@@ -50,6 +50,8 @@ git push -u origin main
    | --- | --- |
    | `DATABASE_URL` | the Neon connection string from step 1 |
    | `SECRET_KEY` | Render can auto-generate this (the blueprint does) |
+   | `APP_USERNAME` | the ID people type on the sign-in page |
+   | `APP_PASSWORD` | the password for the sign-in page. Without both of these, nobody can sign in |
 
 4. Click **Deploy**. First deploy takes a couple of minutes.
 

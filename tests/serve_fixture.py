@@ -29,4 +29,5 @@ class DemoConnection(Connection):
 app.db.connect=lambda: DemoConnection(rows)
 app.db.init_db=lambda:None
 app.db.get_meta=lambda *args:None
+app.app.config['LOGIN_DISABLED']=True  # demo data only; the UI tests drive pages without signing in
 app.app.run(host='127.0.0.1',port=5003,debug=False)

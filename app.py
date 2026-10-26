@@ -1,11 +1,17 @@
+import hmac
 import os
+import secrets
 import tempfile
+import time
+from datetime import timedelta
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, url_for, send_file  # noqa: E402
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for, send_file  # noqa: E402
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 import db  # noqa: E402
 import ingest  # noqa: E402
@@ -13,10 +19,132 @@ import queries  # noqa: E402
 import exports  # noqa: E402
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "health-ops-renewal-tracker")
+
+# Sessions are signed with this key, so a guessable one would let anyone forge a
+# login. Placeholder values fall back to a random key (sessions then reset on restart).
+_PLACEHOLDER_KEYS = {"", "change-me", "health-ops-renewal-tracker"}
+_secret_key = os.environ.get("SECRET_KEY", "")
+app.secret_key = secrets.token_hex(32) if _secret_key in _PLACEHOLDER_KEYS else _secret_key
+
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+)
+if os.environ.get("RENDER"):
+    # Behind Render's proxy: use the real client address and scheme.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 ALLOWED = {".xls", ".xlsx"}
+
+LOGIN_MAX_FAILURES = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_failed_logins = {}  # client address -> timestamps of recent failed sign-ins
+
+
+def _configured_credentials():
+    return os.environ.get("APP_USERNAME", ""), os.environ.get("APP_PASSWORD", "")
+
+
+def _auth_token():
+    """Proof of a valid sign-in, tied to the current credentials so that changing
+    APP_PASSWORD signs everyone out. None when sign-in isn't configured."""
+    username, password = _configured_credentials()
+    if not username or not password:
+        return None
+    return hmac.new(app.secret_key.encode(), f"{username}\0{password}".encode(), "sha256").hexdigest()
+
+
+def _is_signed_in():
+    token = _auth_token()
+    return bool(token) and hmac.compare_digest(str(session.get("auth", "")), token)
+
+
+def _credentials_match(username, password):
+    expected_user, expected_password = _configured_credentials()
+    if not expected_user or not expected_password:
+        return False
+    user_ok = hmac.compare_digest(username.casefold().encode(), expected_user.casefold().encode())
+    password_ok = hmac.compare_digest(password.encode(), expected_password.encode())
+    return user_ok and password_ok
+
+
+def _recent_failures(address):
+    cutoff = time.time() - LOGIN_WINDOW_SECONDS
+    recent = [t for t in _failed_logins.get(address, []) if t > cutoff]
+    if recent:
+        _failed_logins[address] = recent
+    else:
+        _failed_logins.pop(address, None)
+    return recent
+
+
+def _safe_next(target):
+    """Only follow same-site paths after sign-in, never an external address."""
+    if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        parsed = urlparse(target)
+        if not parsed.scheme and not parsed.netloc and parsed.path not in ("/login", "/logout"):
+            return target
+    return url_for("overview")
+
+
+@app.before_request
+def require_login():
+    if app.config.get("LOGIN_DISABLED") or request.endpoint in ("login", "static"):
+        return None
+    if _is_signed_in():
+        return None
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Please sign in again.", "login": url_for("login")}), 401
+    if request.method == "GET":
+        return redirect(url_for("login", next=request.full_path.rstrip("?")))
+    return redirect(url_for("login"))
+
+
+@app.after_request
+def no_store(response):
+    # Pages and API responses carry client data; keep them out of shared caches.
+    if request.endpoint != "static":
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    next_url = _safe_next(request.values.get("next"))
+    configured = _auth_token() is not None
+    if request.method == "GET":
+        if _is_signed_in():
+            return redirect(next_url)
+        return render_template("login.html", next_url=next_url, configured=configured)
+
+    address = request.remote_addr or "unknown"
+    if len(_recent_failures(address)) >= LOGIN_MAX_FAILURES:
+        return render_template(
+            "login.html", next_url=next_url, configured=configured,
+            error="Too many incorrect attempts. Please wait a few minutes and try again.",
+        ), 429
+    if _credentials_match(request.form.get("username", "").strip(), request.form.get("password", "")):
+        _failed_logins.pop(address, None)
+        session.clear()
+        session["auth"] = _auth_token()
+        session.permanent = True
+        return redirect(next_url)
+
+    if len(_failed_logins) > 5000:
+        _failed_logins.clear()
+    _failed_logins.setdefault(address, []).append(time.time())
+    return render_template(
+        "login.html", next_url=next_url, configured=configured, error="Incorrect ID or password.",
+    ), 401
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 @app.route("/", methods=["GET"])
