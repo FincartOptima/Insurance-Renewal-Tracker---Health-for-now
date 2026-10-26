@@ -13,6 +13,12 @@ python app.py
 
 Open http://127.0.0.1:5003 and sign in with the `APP_USERNAME` / `APP_PASSWORD` from `.env`. Every page and API route requires sign-in; if either value is unset, nobody can sign in. Render needs the same two settings in its Environment tab; no framework migration or additional production dependencies are required. See [DEPLOY.md](DEPLOY.md).
 
+## Static demo (GitHub Pages)
+
+`index.html`, `tracker.html` and `upload.html` at the top of this repository are a static copy of the app for GitHub Pages, which can't run Flask or a database. They use fictional sample data generated in the browser by `static/demo-api.js`; no real client data is stored in this repository. Edits last until reload, Excel downloads arrive as CSV, and importing is switched off.
+
+After changing a template, rebuild the pages with `python build_static.py`.
+
 ## Renewal workspace
 
 - Light interface with visible summary counts, labelled filters and a compact policy table.

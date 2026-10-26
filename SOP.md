@@ -4,7 +4,8 @@ This document explains everything about the Renewal Tracker in plain language:
 how to use it day to day, how to rebuild it from scratch if something breaks,
 and what it can't do. No coding background needed to follow this.
 
-**Live webpage:** https://health-ops-renewal-tracker-4zop.onrender.com
+**Live webpage:** the address is in your Render dashboard (it is not listed
+here because this repository is public).
 
 
 ## 1. What this tool does

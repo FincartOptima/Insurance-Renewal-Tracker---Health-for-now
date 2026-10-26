@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#102a56">
+<title>Overview · Fincart</title>
+<link rel="icon" href="static/fincart-logo.png">
+<link rel="stylesheet" href="static/style.css?v=blue-20261026">
+<script src="static/demo-api.js"></script>
+<script src="static/workspace.js?v=blue-20261026" defer></script>
+</head>
+<body data-page="overview" data-await-data="true">
+<div id="loading-screen" class="loading-screen" hidden aria-label="Loading Fincart workspace" role="status" aria-live="polite">
+  <div class="loading-content">
+    <div class="loading-symbol"><span class="loading-ring" aria-hidden="true"></span><img src="static/fincart-logo.png" width="1000" height="1000" alt="Fincart"></div>
+    <div class="loading-brand">FINCART</div>
+    <p class="loading-title">Insurance Renewal Tracker</p>
+    <p id="loading-status">Preparing your workspace…</p>
+    <button id="loading-continue" class="text-button" type="button" hidden>Continue to workspace</button>
+  </div>
+  <span class="loading-footer">Insurance operations, made clear.</span>
+</div>
+<div id="app-shell" class="app-shell">
+<a class="skip-link" href="#main">Skip to content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html" aria-label="Fincart Renewal Tracker home"><span class="brand-logo"><img src="static/fincart-logo.png" alt="" width="40" height="40"></span><span>Fincart<span class="brand-product">INSURANCE OPERATIONS</span></span></a>
+  <p class="nav-caption">WORKSPACE</p>
+  <nav aria-label="Main navigation">
+    <a href="index.html" class="active" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</a>
+    <a href="tracker.html" ><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18m-14 5h3m4 0h3"/></svg>Renewals</a>
+    <a href="upload.html" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M4 15v6h16v-6"/></svg>Import data</a>
+  </nav>
+  <div class="sidebar-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><strong>Every renewal matters.</strong><p>A clear view of what’s due.<br>A timely follow-up for every client.</p></div>
+  <div class="sidebar-footer"><span class="workspace-avatar">F</span><span>Fincart workspace<small>Policy management</small></span></div>
+</aside>
+<div class="workspace">
+  <header class="workspace-bar"><div><span>Insurance operations</span><span class="breadcrumb-divider">/</span><strong>Overview</strong></div><div class="workspace-actions"><span id="workspace-date" class="workspace-date">India Standard Time</span></div></header>
+  <main id="main" tabindex="-1">
+<div class="notice warn demo-note" role="note"><strong>Demo with sample data.</strong> Every client, policy and number here is fictional. Edits reset when you reload, Excel downloads arrive as CSV, and importing is switched off.</div>
+    
+      
+    
+    
+<div class="page-heading">
+  <div><p class="eyebrow">PORTFOLIO</p><h1>Portfolio overview</h1><p class="lede">Where renewals stand right now, across every team.</p></div>
+  <div class="heading-actions"><a class="secondary" href="tracker.html">Open renewal tracker</a></div>
+</div>
+
+
+<div class="notice error" id="overview-error" role="alert" hidden><span>Unable to load your portfolio. Please try again.</span><button class="text-button" id="overview-retry" type="button">Try again</button></div>
+<noscript><p class="notice error">Enable JavaScript to view the overview.</p></noscript>
+
+<section class="bucket-cards portfolio-cards" aria-label="Portfolio summary">
+  <div class="bcard"><span class="metric-label"><i class="metric-dot overdue" aria-hidden="true"></i>Overdue</span><strong id="ov-overdue">—</strong><small>Already past the renewal date, not yet renewed</small></div>
+  <div class="bcard"><span class="metric-label"><i class="metric-dot next30" aria-hidden="true"></i>Upcoming (30 days)</span><strong id="ov-upcoming">—</strong><small>Due in the next 30 days</small></div>
+  <div class="bcard"><span class="metric-label"><i class="metric-dot all" aria-hidden="true"></i>Active policies</span><strong id="ov-active">—</strong><small>Excludes cancelled and already-renewed policies</small></div>
+</section>
+<div class="context-line"><p id="ov-asof">Loading…</p><p>Superseded policies (already renewed under a new number) are excluded everywhere here.</p></div>
+
+<section class="panel">
+  <div class="filter-heading"><h2>Overdue &amp; upcoming, by team</h2></div>
+  <div class="overview-grid">
+    <div class="chart-wrap"><canvas id="team-chart" height="260"></canvas></div>
+    <div class="table-scroll">
+      <table><thead><tr><th scope="col">Team</th><th scope="col" class="numeric">Overdue</th><th scope="col" class="numeric">Upcoming (30d)</th></tr></thead><tbody id="team-table-body"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<div class="overview-grid two-up">
+  <section class="panel">
+    <div class="filter-heading"><h2>New, Port &amp; Renewal mix</h2></div>
+    <div class="chart-wrap"><canvas id="type-chart" height="260"></canvas></div>
+  </section>
+  <section class="panel">
+    <div class="filter-heading"><h2>Insurer mix</h2></div>
+    <div class="chart-wrap"><canvas id="insurer-chart" height="260"></canvas></div>
+  </section>
+</div>
+
+<section class="panel" id="overdue-section" aria-busy="true" aria-labelledby="overdue-heading">
+  <div class="filter-heading">
+    <h2 id="overdue-heading">Overdue policies</h2>
+    <div class="filter-heading-actions">
+      <button class="secondary" id="od-export" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg><span>Download Excel</span></button>
+      <button class="text-button" id="od-clear-filters" type="button">Reset filters</button>
+    </div>
+  </div>
+  <div class="notice error" id="od-error" role="alert" hidden><span id="od-error-message"></span><button class="text-button" id="od-retry" type="button">Try again</button></div>
+  <form id="od-filters">
+    <div class="filter-grid">
+      <div class="filter-field search-field"><label for="od-search">Search clients or policies</label><div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="od-search" placeholder="Name, policy no., email or phone"></div></div>
+      <div class="filter-field"><label for="od-month-filter">Renewal month</label><select id="od-month-filter"><option value="all">All months</option></select></div>
+      <div class="filter-field"><label for="od-team-filter">Team</label><select id="od-team-filter"><option value="all">All teams</option></select></div>
+      <div class="filter-field"><label for="od-rm-filter">Relationship manager</label><select id="od-rm-filter"><option value="all">All managers</option></select></div>
+      <div class="filter-field"><label for="od-type-filter">Policy type</label><select id="od-type-filter"><option value="all">All types</option></select></div>
+      <div class="filter-field"><label for="od-status-filter">Follow-up</label><select id="od-status-filter"><option value="all">All statuses</option><option value="Not Done">Pending</option><option value="Done">Done</option></select></div>
+    </div>
+  </form>
+  <p id="od-caption" class="small muted" role="status">Loading overdue policies…</p>
+  <p class="small muted">Click a bar to filter by team too &mdash; it stays in sync with the Team filter above.</p>
+  <div class="chart-wrap" style="min-height: 280px;"><canvas id="overdue-team-chart"></canvas></div>
+  <div class="table-scroll">
+    <table class="overdue-table">
+      <thead><tr>
+        <th scope="col">Client &amp; policy</th><th scope="col">Email</th><th scope="col">Phone</th>
+        <th scope="col">RM &amp; team</th><th scope="col">Insurer &amp; plan</th>
+        <th scope="col">Last renewal date</th><th scope="col" class="numeric">Premium</th>
+      </tr></thead>
+      <tbody id="overdue-table-body"></tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <span id="overdue-page-info">—</span>
+    <div class="pagination">
+      <button class="secondary" id="overdue-prev" aria-label="Previous page" disabled>←</button>
+      <button class="secondary" id="overdue-next" aria-label="Next page" disabled>→</button>
+    </div>
+  </div>
+</section>
+
+
+  </main>
+</div>
+</div>
+<script src="static/chart.min.js"></script><script src="static/overview.js?v=blue-20261006" defer></script>
+</body>
+</html>
